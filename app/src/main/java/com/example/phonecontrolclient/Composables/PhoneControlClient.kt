@@ -26,10 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import com.example.phonecontrolclient.NetworkInteraction.ControlEvent
 import com.example.phonecontrolclient.NetworkInteraction.ControlEventType
 import com.example.phonecontrolclient.NetworkInteraction.Network
+import com.example.phonecontrolclient.NetworkInteraction.SpecialEventTargets
 import java.net.Socket
 
 @Composable
@@ -44,8 +47,7 @@ fun PhoneControlClient() {
             if (it != null) {
                 socket = it
                 networkConnection = true
-            }
-            else {
+            } else {
                 errorMessage = "Failed to connect to server"
                 networkConnection = false
             }
@@ -92,8 +94,7 @@ fun PhoneControlClient() {
                     if (it != null) {
                         socket = it
                         networkConnection = true
-                    }
-                    else {
+                    } else {
                         errorMessage = "Failed to connect to server"
                         networkConnection = false
                     }
@@ -105,53 +106,83 @@ fun PhoneControlClient() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TrackPad(
-            displayInfo = true,
-            moved = { x, y ->
-                Network.sendMessage(
-                    socket,
-                    ControlEvent(ControlEventType.Mouse, x.toString(), y.toString())
-                ) {
-                    networkConnection = it
-                }
-            },
-            onRightClick = {
-                Network.sendMessage(
-                    socket,
-                    ControlEvent(ControlEventType.MouseButton, "-1", null)
-                ) {
-                    networkConnection = it
-                }
-            },
-            onLeftClick = {
-                Network.sendMessage(
-                    socket,
-                    ControlEvent(ControlEventType.MouseButton, "1", null)
-                ) {
-                    networkConnection = it
-                }
-            })
+        TrackPad(displayInfo = true, moved = { x, y ->
+            Network.sendMessage(
+                socket, ControlEvent(ControlEventType.Mouse, x.toString(), y.toString())
+            ) {
+                networkConnection = it
+            }
+        }, onRightClick = {
+            Network.sendMessage(
+                socket, ControlEvent(ControlEventType.MouseButton, "-1", null)
+            ) {
+                networkConnection = it
+            }
+        }, onLeftClick = {
+            Network.sendMessage(
+                socket, ControlEvent(ControlEventType.MouseButton, "1", null)
+            ) {
+                networkConnection = it
+            }
+        })
 
         Spacer(modifier = Modifier.height(50.dp))
 
         Row(
-            horizontalArrangement = Arrangement.SpaceAround,
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()
         ) {
             JoyStick(size = 100.dp, dotSize = 20.dp) { x, y ->
                 Network.sendMessage(
-                    socket,
-                    ControlEvent(ControlEventType.MouseWheel, y.toString(), null)
+                    socket, ControlEvent(ControlEventType.MouseWheel, y.toString(), null)
                 ) {
                     networkConnection = it
                 }
             }
-            KeyboardIcon {
-                Network.sendMessage(
-                    socket,
-                    ControlEvent(ControlEventType.Keyboard, it, null)
-                ) { success ->
-                    networkConnection = success
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = {
+                            Network.sendMessage(
+                                socket, ControlEvent(
+                                    ControlEventType.Specials,
+                                    SpecialEventTargets.ApplicationWindow.toString(),
+                                    "left"
+                                )
+                            ) {
+                                networkConnection = it
+                            }
+                        },
+                    ) { Text("<--", fontSize = TextUnit(value = 5f, type = TextUnitType.Em)) }
+                    Button(onClick = {
+                        Network.sendMessage(
+                            socket,
+                            ControlEvent(
+                                ControlEventType.Specials,
+                                SpecialEventTargets.ApplicationWindow.value,
+                                "right"
+                            )
+                        ) {
+                            networkConnection = it
+                        }
+                    }) {
+                        Text(
+                            "-->",
+                            fontSize = TextUnit(value = 5f, type = TextUnitType.Em)
+                        )
+                    }
+                }
+                KeyboardIcon {
+                    Network.sendMessage(
+                        socket, ControlEvent(ControlEventType.Keyboard, it, null)
+                    ) { success ->
+                        networkConnection = success
+                    }
                 }
             }
         }

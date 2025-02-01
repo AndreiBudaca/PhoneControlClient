@@ -11,10 +11,14 @@ class ControlEvent(
     }
 }
 
-
 enum class ControlEventType(val value: Int) {
     Keyboard(1),
     Mouse(2),
     MouseWheel(3),
     MouseButton(4),
+    Specials(5),
+}
+
+enum class SpecialEventTargets(val value: String) {
+    ApplicationWindow("win")
 }
