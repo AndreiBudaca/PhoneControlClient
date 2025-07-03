@@ -1,6 +1,7 @@
 [versions]
 agp = "8.7.1"
 coilGif = "2.0.0-rc02"
+jmdns = "3.5.1"
 kotlin = "2.0.0"
 coreKtx = "1.13.1"
 junit = "4.13.2"
@@ -15,6 +16,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 coil = { module = "io.coil-kt:coil", version.ref = "coilGif" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilGif" }
 coil-gif = { module = "io.coil-kt:coil-gif", version.ref = "coilGif" }
+jmdns = { module = "org.jmdns:jmdns", version.ref = "jmdns" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

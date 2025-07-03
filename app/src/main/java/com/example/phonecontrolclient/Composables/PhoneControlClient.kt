@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,18 +37,37 @@ import java.net.Socket
 @Composable
 fun PhoneControlClient() {
     var socket by remember { mutableStateOf<Socket?>(null) }
-    var ipAddr by remember { mutableStateOf(TextFieldValue("192.168.1.133")) }
-    var errorMessage by remember { mutableStateOf("") }
+    var ipAddr by remember { mutableStateOf(TextFieldValue("")) }
+    var infoText by remember { mutableStateOf("") }
     var networkConnection by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        Network.connectToServer(socket, ipAddr.text) {
-            if (it != null) {
+    fun tryAddresses(addresses: List<String>, index: Int) {
+        if (index >= addresses.size) {
+            infoText = "Could not connect to server"
+            return
+        }
+
+        val currentAddress = addresses[index]
+        ipAddr = TextFieldValue(currentAddress)
+
+        Network.connectToServer(socket, addresses[index]) {
+            if (it == null) tryAddresses(addresses, index + 1)
+            else {
                 socket = it
                 networkConnection = true
+                infoText = ""
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        infoText = "Searching server..."
+        Network.discoverService {
+            if (it == null) {
+                infoText = "Server not found"
             } else {
-                errorMessage = "Failed to connect to server"
-                networkConnection = false
+                infoText = "Trying addresses..."
+                tryAddresses(it, 0)
             }
         }
     }
@@ -80,11 +98,11 @@ fun PhoneControlClient() {
         TextField(
             value = ipAddr,
             onValueChange = { ipAddr = it },
-            label = { Text("Ip address") },
+            label = { Text("IP address") },
         )
 
         Text(
-            text = errorMessage
+            text = infoText
         )
 
         Button(
@@ -95,7 +113,7 @@ fun PhoneControlClient() {
                         socket = it
                         networkConnection = true
                     } else {
-                        errorMessage = "Failed to connect to server"
+                        infoText = "Failed to connect to server"
                         networkConnection = false
                     }
                 }

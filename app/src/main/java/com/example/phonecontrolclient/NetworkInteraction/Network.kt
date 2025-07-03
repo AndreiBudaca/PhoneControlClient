@@ -7,10 +7,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
+import javax.jmdns.JmDNS
 
 class Network {
     companion object {
+        @OptIn(DelicateCoroutinesApi::class)
+        fun discoverService(onResponse: (List<String>?) -> Unit) {
+            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                val jmdns = JmDNS.create()
+                val info = jmdns.getServiceInfo("tcp.local", "phone.control")
+                jmdns.close()
 
+                withContext(Dispatchers.Main) {
+                    if (info == null) onResponse(null)
+                    onResponse(info.inet4Addresses.map { it.toString().substring(1) })
+                }
+            }
+        }
 
         @OptIn(DelicateCoroutinesApi::class)
         fun connectToServer(socket: Socket?, ipAddress: String, onResponse: (Socket?) -> Unit) {

@@ -59,4 +59,5 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.gif)
     implementation(libs.coil.compose)
+    implementation(libs.jmdns)
 }
