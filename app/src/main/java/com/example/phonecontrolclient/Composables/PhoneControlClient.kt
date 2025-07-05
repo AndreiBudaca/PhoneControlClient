@@ -1,5 +1,7 @@
 package com.example.phonecontrolclient.Composables
 
+import ServerInfoOverlay
+import ToggleOverlayButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,10 +41,13 @@ fun PhoneControlClient() {
     var ipAddr by remember { mutableStateOf(TextFieldValue("")) }
     var infoText by remember { mutableStateOf("") }
     var networkConnection by remember { mutableStateOf(false) }
+    var searchingNetwork by remember { mutableStateOf(false) }
+    var serverInfoOverlay by remember { mutableStateOf(false) }
 
     fun tryAddresses(addresses: List<String>, index: Int) {
         if (index >= addresses.size) {
             infoText = "Could not connect to server"
+            searchingNetwork = false
             return
         }
 
@@ -55,21 +59,56 @@ fun PhoneControlClient() {
             else {
                 socket = it
                 networkConnection = true
-                infoText = ""
+                infoText = "Connected"
+                searchingNetwork = false
             }
         }
     }
 
-    LaunchedEffect(Unit) {
-        infoText = "Searching server..."
-        Network.discoverService {
-            if (it == null) {
-                infoText = "Server not found"
-            } else {
-                infoText = "Trying addresses..."
-                tryAddresses(it, 0)
+    fun connect() {
+        if (searchingNetwork) return
+
+        searchingNetwork = true
+        if (ipAddr.text.isEmpty()) {
+            infoText = "Searching server..."
+            Network.discoverService {
+                if (it == null) {
+                    infoText = "Server not found"
+                } else {
+                    infoText = "Trying addresses..."
+                    tryAddresses(it, 0)
+                }
+            }
+        } else {
+            Network.connectToServer(socket, ipAddr.text) {
+                searchingNetwork = false
+                if (it != null) {
+                    socket = it
+                    networkConnection = true
+                    infoText = "Connected"
+                } else {
+                    infoText = "Failed to connect to server"
+                    networkConnection = false
+                }
             }
         }
+    }
+
+    fun updateConnection(connectionAlive: Boolean) {
+        if (!connectionAlive && socket != null) {
+            socket?.close()
+            connect()
+        }
+
+        if (!connectionAlive) {
+            socket = null
+        }
+
+        networkConnection = connectionAlive
+    }
+
+    LaunchedEffect(Unit) {
+        connect()
     }
 
     DisposableEffect(Unit) {
@@ -90,37 +129,10 @@ fun PhoneControlClient() {
             modifier = Modifier
                 .width(30.dp)
                 .height(30.dp)
-                .background(color = if (networkConnection) Color.Green else Color.Red)
+                .background(color = if (networkConnection) Color.Green else if (searchingNetwork) Color.Yellow else Color.Red)
         ) {}
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        TextField(
-            value = ipAddr,
-            onValueChange = { ipAddr = it },
-            label = { Text("IP address") },
-        )
-
-        Text(
-            text = infoText
-        )
-
-        Button(
-            onClick = {
-                // Trigger connection to server
-                Network.connectToServer(socket, ipAddr.text) {
-                    if (it != null) {
-                        socket = it
-                        networkConnection = true
-                    } else {
-                        infoText = "Failed to connect to server"
-                        networkConnection = false
-                    }
-                }
-            },
-        ) {
-            Text("Reconnect")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -128,19 +140,19 @@ fun PhoneControlClient() {
             Network.sendMessage(
                 socket, ControlEvent(ControlEventType.Mouse, x.toString(), y.toString())
             ) {
-                networkConnection = it
+                updateConnection(it)
             }
         }, onRightClick = {
             Network.sendMessage(
                 socket, ControlEvent(ControlEventType.MouseButton, "-1", null)
             ) {
-                networkConnection = it
+                updateConnection(it)
             }
         }, onLeftClick = {
             Network.sendMessage(
                 socket, ControlEvent(ControlEventType.MouseButton, "1", null)
             ) {
-                networkConnection = it
+                updateConnection(it)
             }
         })
 
@@ -153,7 +165,7 @@ fun PhoneControlClient() {
                 Network.sendMessage(
                     socket, ControlEvent(ControlEventType.MouseWheel, y.toString(), null)
                 ) {
-                    networkConnection = it
+                    updateConnection(it)
                 }
             }
             Column(
@@ -173,7 +185,7 @@ fun PhoneControlClient() {
                                     "left"
                                 )
                             ) {
-                                networkConnection = it
+                                updateConnection(it)
                             }
                         },
                     ) { Text("<--", fontSize = TextUnit(value = 5f, type = TextUnitType.Em)) }
@@ -186,7 +198,7 @@ fun PhoneControlClient() {
                                 "right"
                             )
                         ) {
-                            networkConnection = it
+                            updateConnection(it)
                         }
                     }) {
                         Text(
@@ -199,12 +211,39 @@ fun PhoneControlClient() {
                     Network.sendMessage(
                         socket, ControlEvent(ControlEventType.Keyboard, it, null)
                     ) { success ->
-                        networkConnection = success
+                        updateConnection(success)
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(50.dp))
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 60.dp), // adjust to avoid overlapping toggle button
+        contentAlignment = Alignment.TopCenter
+    ) {
+        ServerInfoOverlay(
+            visible = serverInfoOverlay,
+            ipAddr = ipAddr,
+            infoText = infoText,
+            onIpChange = { ipAddr = it },
+            onReconnect = { connect() },
+            onDismiss = { serverInfoOverlay = false }
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, end = 8.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        ToggleOverlayButton {
+            serverInfoOverlay = !serverInfoOverlay
+        }
     }
 }

@@ -19,8 +19,11 @@ class Network {
                 jmdns.close()
 
                 withContext(Dispatchers.Main) {
-                    if (info == null) onResponse(null)
-                    onResponse(info.inet4Addresses.map { it.toString().substring(1) })
+                    if (info == null)  {
+                        onResponse(null)
+                    } else {
+                        onResponse(info.inet4Addresses.map { it.toString().substring(1) })
+                    }
                 }
             }
         }
