@@ -42,12 +42,16 @@ fun KeyboardIcon(keyPressed: (x: String) -> Unit = { _ -> }) {
         BasicTextField(
             value = textValue.value,
             onValueChange = { message: String ->
-                if (message != "") keyPressed(message)
+                if (message != "") {
+                    val difLength = message.length - textValue.value.length
+                    if (difLength > 0) {
+                        keyPressed(message.substring(message.length - difLength, message.length))
+                    }
+                }
+                textValue.value = message
             },
             modifier = Modifier
                 .onKeyEvent { keyEvent ->
-
-                    
                     when (keyEvent.key) {
                         Key.Enter -> {
                             keyPressed("ENTER")
@@ -59,7 +63,7 @@ fun KeyboardIcon(keyPressed: (x: String) -> Unit = { _ -> }) {
                         }
                         else -> false
                     }
-                }
+                }.height(0.dp)
         )
     }
 }

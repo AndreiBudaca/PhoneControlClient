@@ -13,7 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -129,93 +135,122 @@ fun PhoneControlClient() {
             modifier = Modifier
                 .width(30.dp)
                 .height(30.dp)
-                .background(color = if (networkConnection) Color.Green else if (searchingNetwork) Color.Yellow else Color.Red)
+                .background(
+                    color = if (networkConnection) Color.Green else if (searchingNetwork) Color.Yellow else Color.Red,
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
         ) {}
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TrackPad(displayInfo = true, moved = { x, y ->
-            Network.sendMessage(
-                socket, ControlEvent(ControlEventType.Mouse, x.toString(), y.toString())
-            ) {
-                updateConnection(it)
+        Row(
+            horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            KeyboardIcon {
+                Network.sendMessage(
+                    socket, ControlEvent(ControlEventType.Keyboard, it, null)
+                ) { success ->
+                    updateConnection(success)
+                }
             }
-        }, onRightClick = {
-            Network.sendMessage(
-                socket, ControlEvent(ControlEventType.MouseButton, "-1", null)
+
+            Button(
+                onClick = {
+                    Network.sendMessage(
+                        socket, ControlEvent(
+                            ControlEventType.Specials,
+                            SpecialEventTargets.ApplicationWindow.toString(),
+                            "left"
+                        )
+                    ) {
+                        updateConnection(it)
+                    }
+                },
+                modifier = Modifier
+                    .padding(4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Cyan,
+                    contentColor = Color.Black // Ensure icons/text are visible on cyan
+                )
             ) {
-                updateConnection(it)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Left"
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Window"
+                )
             }
-        }, onLeftClick = {
-            Network.sendMessage(
-                socket, ControlEvent(ControlEventType.MouseButton, "1", null)
+
+            Button(
+                onClick = {
+                    Network.sendMessage(
+                        socket,
+                        ControlEvent(
+                            ControlEventType.Specials,
+                            SpecialEventTargets.ApplicationWindow.value,
+                            "right"
+                        )
+                    ) {
+                        updateConnection(it)
+                    }
+                },
+                modifier = Modifier
+                    .padding(4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Cyan,
+                    contentColor = Color.Black // Ensure icons/text are visible on cyan
+                )
             ) {
-                updateConnection(it)
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Window"
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Right"
+                )
             }
-        })
+        }
 
         Spacer(modifier = Modifier.height(50.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()
-        ) {
-            JoyStick(size = 100.dp, dotSize = 20.dp) { x, y ->
+        TrackPad(
+            scrolled = { y ->
                 Network.sendMessage(
                     socket, ControlEvent(ControlEventType.MouseWheel, y.toString(), null)
                 ) {
                     updateConnection(it)
                 }
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
+            },
+            moved = { x, y ->
+                Network.sendMessage(
+                    socket, ControlEvent(ControlEventType.Mouse, x.toString(), y.toString())
                 ) {
-                    Button(
-                        onClick = {
-                            Network.sendMessage(
-                                socket, ControlEvent(
-                                    ControlEventType.Specials,
-                                    SpecialEventTargets.ApplicationWindow.toString(),
-                                    "left"
-                                )
-                            ) {
-                                updateConnection(it)
-                            }
-                        },
-                    ) { Text("<--", fontSize = TextUnit(value = 5f, type = TextUnitType.Em)) }
-                    Button(onClick = {
-                        Network.sendMessage(
-                            socket,
-                            ControlEvent(
-                                ControlEventType.Specials,
-                                SpecialEventTargets.ApplicationWindow.value,
-                                "right"
-                            )
-                        ) {
-                            updateConnection(it)
-                        }
-                    }) {
-                        Text(
-                            "-->",
-                            fontSize = TextUnit(value = 5f, type = TextUnitType.Em)
-                        )
-                    }
+                    updateConnection(it)
                 }
-                KeyboardIcon {
-                    Network.sendMessage(
-                        socket, ControlEvent(ControlEventType.Keyboard, it, null)
-                    ) { success ->
-                        updateConnection(success)
-                    }
+            },
+            onRightClick = {
+                Network.sendMessage(
+                    socket, ControlEvent(ControlEventType.MouseButton, "-1", null)
+                ) {
+                    updateConnection(it)
+                }
+            },
+            onLeftClick = {
+                Network.sendMessage(
+                    socket, ControlEvent(ControlEventType.MouseButton, "1", null)
+                ) {
+                    updateConnection(it)
                 }
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(50.dp))
     }
