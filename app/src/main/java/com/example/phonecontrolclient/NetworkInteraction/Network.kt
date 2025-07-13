@@ -1,54 +1,59 @@
 package com.example.phonecontrolclient.NetworkInteraction
 
 import android.util.Log
+import com.example.phonecontrolclient.NetworkInteraction.IPFinder.IPFinder
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
-import javax.jmdns.JmDNS
 
 class Network {
     companion object {
         @OptIn(DelicateCoroutinesApi::class)
-        fun discoverService(onResponse: (List<String>?) -> Unit) {
+        fun connect(ipAddress: String, onResponse: (NetworkEvent, Socket?) -> Unit) {
             kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                val jmdns = JmDNS.create()
-                val info = jmdns.getServiceInfo("tcp.local", "phone.control")
-                jmdns.close()
+                withContext(Dispatchers.Main) {
+                    onResponse(NetworkEvent.EstablishingConnection, null)
+                }
+
+                val socket = connectToIP(ipAddress)
+                val event =  if (socket != null) NetworkEvent.Connected else NetworkEvent.ConnectionFailed
 
                 withContext(Dispatchers.Main) {
-                    if (info == null)  {
-                        onResponse(null)
-                    } else {
-                        onResponse(info.inet4Addresses.map { it.toString().substring(1) })
-                    }
+                    onResponse(event, socket)
                 }
             }
         }
 
         @OptIn(DelicateCoroutinesApi::class)
-        fun connectToServer(socket: Socket?, ipAddress: String, onResponse: (Socket?) -> Unit) {
+        fun connect(finders: List<IPFinder>, onResponse: (NetworkEvent, Socket?) -> Unit) {
             kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                try {
-                    // Close old socket
-                    socket?.close()
+                withContext(Dispatchers.Main) {
+                    onResponse(NetworkEvent.EstablishingConnection, null)
+                }
 
-                    // Connect to the server
-                    val newSocket = Socket()
-                    newSocket.connect(
-                        InetSocketAddress(ipAddress, 34999),
-                        1000)
+                var connectionFound = false
 
-                    // Pass the response back to the UI thread
-                    withContext(Dispatchers.Main) {
-                        onResponse(newSocket)
+                for (finder in finders) {
+                    val ips = finder.findIPs() ?: continue
+
+                    for (ip in ips) {
+                        val socket = connectToIP(ip) ?: continue
+                        withContext(Dispatchers.Main) {
+                            onResponse(NetworkEvent.Connected, socket)
+                        }
+                        connectionFound = true
+                        break
                     }
-                } catch (e: Exception) {
-                    Log.e("TCPClient", "Error: ${e.message}")
+
+                    if (connectionFound) break
+                }
+
+                if (!connectionFound) {
                     withContext(Dispatchers.Main) {
-                        onResponse(null)
+                        onResponse(NetworkEvent.ConnectionFailed, null)
                     }
                 }
             }
@@ -62,20 +67,35 @@ class Network {
             }
 
             kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                    try {
-                        synchronized(socket) {
-                            val outputStream = socket.getOutputStream()
-                            outputStream.write(message.toString().toByteArray())
-                        }
-                        withContext(Dispatchers.Main) {
-                            onResponse(true)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("TCPClient", "Error: ${e.message}")
-                        withContext(Dispatchers.Main) {
-                            onResponse(false)
-                        }
+                try {
+                    synchronized(socket) {
+                        val outputStream = socket.getOutputStream()
+                        outputStream.write(message.toString().toByteArray())
                     }
+                    withContext(Dispatchers.Main) {
+                        onResponse(true)
+                    }
+                } catch (e: Exception) {
+                    Log.e("TCPClient", "Error: ${e.message}")
+                    withContext(Dispatchers.Main) {
+                        onResponse(false)
+                    }
+                }
+            }
+        }
+
+        private fun connectToIP(ipAddress: String): Socket? {
+            try {
+                val socket = Socket()
+
+                socket.connect(
+                    InetSocketAddress(ipAddress, 34999),
+                    1000)
+
+                return socket
+            } catch (e: Exception) {
+                Log.e("TCPClient", "Error: ${e.message}")
+                return null
             }
         }
     }

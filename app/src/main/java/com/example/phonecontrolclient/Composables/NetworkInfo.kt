@@ -1,8 +1,10 @@
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,29 +56,15 @@ fun ServerInfoOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.3f))
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        awaitPointerEvent() // tap anywhere triggers dismiss
-                        onDismiss()
-                    }
-                },
+                .clickable { onDismiss() },
             contentAlignment = Alignment.TopCenter
         ) {
-            // The actual overlay content — consumes taps so it doesn’t dismiss
             Card(
                 modifier = Modifier
                     .padding(16.dp)
                     .wrapContentHeight()
                     .fillMaxWidth(0.95f)
-                    .pointerInput(Unit) {
-                        // Prevent click from propagating
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent()
-                                // Do nothing: absorbs the event
-                            }
-                        }
-                    },
+                    .clickable(enabled = false) {  },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(6.dp)
@@ -91,7 +79,7 @@ fun ServerInfoOverlay(
                         value = ipAddr,
                         onValueChange = onIpChange,
                         label = { Text("IP Address") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().clickable {  }
                     )
 
                     Text(
