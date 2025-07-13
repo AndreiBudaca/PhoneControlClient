@@ -28,10 +28,10 @@ class Network {
         }
 
         @OptIn(DelicateCoroutinesApi::class)
-        fun connect(finders: List<IPFinder>, onResponse: (NetworkEvent, Socket?) -> Unit) {
+        fun connect(finders: List<IPFinder>, onResponse: (NetworkEvent, String, Socket?) -> Unit) {
             kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                 withContext(Dispatchers.Main) {
-                    onResponse(NetworkEvent.EstablishingConnection, null)
+                    onResponse(NetworkEvent.EstablishingConnection, "", null)
                 }
 
                 var connectionFound = false
@@ -40,10 +40,16 @@ class Network {
                     val ips = finder.findIPs() ?: continue
 
                     for (ip in ips) {
-                        val socket = connectToIP(ip) ?: continue
                         withContext(Dispatchers.Main) {
-                            onResponse(NetworkEvent.Connected, socket)
+                            onResponse(NetworkEvent.TryingIp, ip, null)
                         }
+
+                        val socket = connectToIP(ip) ?: continue
+
+                        withContext(Dispatchers.Main) {
+                            onResponse(NetworkEvent.Connected, ip, socket)
+                        }
+
                         connectionFound = true
                         break
                     }
@@ -53,7 +59,7 @@ class Network {
 
                 if (!connectionFound) {
                     withContext(Dispatchers.Main) {
-                        onResponse(NetworkEvent.ConnectionFailed, null)
+                        onResponse(NetworkEvent.ConnectionFailed, "", null)
                     }
                 }
             }

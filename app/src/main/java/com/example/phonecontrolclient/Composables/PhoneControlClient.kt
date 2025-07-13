@@ -30,11 +30,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.example.phonecontrolclient.NetworkInteraction.ControlEvent
 import com.example.phonecontrolclient.NetworkInteraction.ControlEventType
+import com.example.phonecontrolclient.NetworkInteraction.IPFinder.FileFinder
 import com.example.phonecontrolclient.NetworkInteraction.IPFinder.MDNSFinder
+import com.example.phonecontrolclient.NetworkInteraction.IPSaver.FileSaver
+import com.example.phonecontrolclient.NetworkInteraction.IPSaver.IPSaver
 import com.example.phonecontrolclient.NetworkInteraction.Network
 import com.example.phonecontrolclient.NetworkInteraction.NetworkEvent
 import com.example.phonecontrolclient.NetworkInteraction.SpecialEventTargets
@@ -42,42 +46,59 @@ import java.net.Socket
 
 @Composable
 fun PhoneControlClient() {
+    val context = LocalContext.current
+    val ipSaver: IPSaver = FileSaver(context)
     var socket by remember { mutableStateOf<Socket?>(null) }
-    var ipAddr by remember { mutableStateOf(TextFieldValue("")) }
+    var ipAddr by remember { mutableStateOf(TextFieldValue("192.168.100.85")) }
     var infoText by remember { mutableStateOf("") }
     var networkConnection by remember { mutableStateOf(false) }
     var searchingNetwork by remember { mutableStateOf(false) }
     var serverInfoOverlay by remember { mutableStateOf(false) }
 
-    fun handleNetworkEvent(event: NetworkEvent, newSocket: Socket?) {
+    fun handleNetworkEvent(event: NetworkEvent, ipToTry: String, newSocket: Socket?) {
         when (event) {
             NetworkEvent.EstablishingConnection -> {
                 networkConnection = false
                 searchingNetwork = true
                 socket = null
+                ipAddr = TextFieldValue(ipToTry)
                 infoText = "Trying to connect to the server"
+            }
+            NetworkEvent.TryingIp -> {
+                networkConnection = false
+                searchingNetwork = true
+                socket = null
+                ipAddr = TextFieldValue(ipToTry)
+                infoText = "Found some IPs, trying them"
             }
             NetworkEvent.ConnectionFailed -> {
                 networkConnection = false
                 searchingNetwork = false
                 socket = null
+                ipAddr = TextFieldValue(ipToTry)
                 infoText = "Failed to connect to the server"
             }
             NetworkEvent.Connected -> {
                 networkConnection = true
                 searchingNetwork = false
                 socket = newSocket
+                ipAddr = TextFieldValue(ipToTry)
                 infoText = "Connected"
+
+                ipSaver.saveIP(ipToTry)
             }
         }
     }
 
     fun connect() {
         if (searchingNetwork) return
+
+        socket?.close()
+
         if (ipAddr.text.isNotEmpty()) {
-            Network.connect(ipAddr.text) { event, socket ->  handleNetworkEvent(event, socket) }
+            Network.connect(ipAddr.text) { event, socket ->  handleNetworkEvent(event, ipAddr.text, socket) }
         } else {
-            Network.connect(listOf(MDNSFinder())) { event, socket ->  handleNetworkEvent(event, socket) }
+            Network.connect(listOf(FileFinder(context), MDNSFinder())) { event, ip, socket ->  handleNetworkEvent(event, ip, socket) }
         }
     }
 

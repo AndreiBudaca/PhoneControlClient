@@ -1,5 +1,5 @@
 package com.example.phonecontrolclient.NetworkInteraction.IPFinder
 
 interface IPFinder {
-    fun findIPs(): List<String>?
+    fun findIPs(): List<String>
 }
